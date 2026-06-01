@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Factory MES | PT. DENSO INDONESIA</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* === ENTERPRISE DESIGN TOKENS (LIGHT CORPORATE THEME) === */
+        :root {
+            --mes-bg-base: #f1f5f9;
+            --mes-bg-surface: #ffffff;
+            --mes-bg-sidebar: #ffffff;
+            --mes-border: #e2e8f0;
+            --mes-primary: #1d4ed8; 
+            --mes-primary-light: #eff6ff; 
+            --mes-success: #16a34a;
+            --mes-warning: #ea580c;
+            --mes-warning-light: #fff7ed;
+            --mes-danger: #dc2626;
+            --mes-danger-light: #fef2f2;
+            --mes-text-high: #0f172a; 
+            --mes-text-med: #475569; 
+            --sidebar-width: 280px;
+        }
+
+        body {
+            background-color: var(--mes-bg-base);
+            color: var(--mes-text-high);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden; 
+        }
+
+        /* === LAYOUT SHELL === */
+        .app-container { display: flex; height: 100vh; width: 100vw; }
+        
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--mes-bg-sidebar);
+            border-right: 1px solid var(--mes-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.02);
+        }
+
+        .main-workspace {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--mes-bg-base);
+        }
+
+        .top-navbar {
+            height: 72px;
+            background-color: var(--mes-primary);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            z-index: 50;
+            box-shadow: 0 2px 10px rgba(29, 78, 216, 0.15);
+        }
+
+        .content-scrollable {
+            flex-grow: 1;
+            padding: 1.5rem 2rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* === SIDEBAR NAVIGATION === */
+        .brand-logo {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--mes-border);
+        }
+        
+        .nav-label {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--mes-text-med); font-weight: 700; padding: 1.5rem 1.5rem 0.5rem;
+        }
+
+        .nav-item-role {
+            padding: 0.875rem 1.5rem; color: var(--mes-text-med);
+            cursor: pointer; transition: all 0.2s ease;
+            border-left: 4px solid transparent; font-weight: 600;
+            display: flex; align-items: center;
+        }
+
+        .nav-item-role:hover { color: var(--mes-primary); background: var(--mes-primary-light); }
+        .nav-item-role.active {
+            background: var(--mes-primary-light);
+            color: var(--mes-primary); border-left-color: var(--mes-primary);
+        }
+        .nav-item-role i { margin-right: 14px; font-size: 1.2rem; width: 24px; text-align: center; }
+
+        /* === UI COMPONENTS === */
+        .mes-card {
+            background-color: var(--mes-bg-surface);
+            border: 1px solid var(--mes-border);
+            border-radius: 12px; padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            height: 100%; transition: transform 0.2s;
+        }
+        
+        .kpi-value { font-size: 2.5rem; font-weight: 800; line-height: 1.1; margin: 0.5rem 0; color: var(--mes-text-high); }
+
+        /* Datatable Styling */
+        .mes-table { width: 100%; border-collapse: separate; border-spacing: 0; color: var(--mes-text-high); }
+        .mes-table th {
+            background: #f8fafc; padding: 1rem 1.25rem; font-weight: 700;
+            font-size: 0.85rem; text-transform: uppercase; color: var(--mes-text-med);
+            border-bottom: 2px solid var(--mes-border); border-top: 1px solid var(--mes-border);
+        }
+        .mes-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--mes-border); vertical-align: middle; }
+        .mes-table tbody tr:hover { background-color: var(--mes-bg-base); }
+        
+        .row-alert td { background-color: var(--mes-danger-light); }
+        .row-alert td:first-child { border-left: 4px solid var(--mes-danger); }
+
+        /* Operator Data Grid */
+        .operator-table th { font-size: 1.1rem; padding: 1.25rem; background: #e2e8f0; color: var(--mes-text-high); }
+        .operator-table td { font-size: 1.3rem; font-weight: 600; padding: 1.25rem; }
+        .bg-light-gray { background-color: #f8fafc; }
+
+        /* Kanban Logistics */
+        .kanban-col {
+            background: #f8fafc; border-radius: 12px; padding: 1rem;
+            border: 1px solid var(--mes-border); min-height: 60vh;
+        }
+        .kanban-card {
+            background: #fff; border: 1px solid var(--mes-border); border-left: 4px solid var(--mes-primary);
+            border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .kanban-card.urgent { border-left-color: var(--mes-danger); }
+        .kanban-card.transit { border-left-color: var(--mes-warning); }
+
+        /* Indikator IoT */
+        .sensor-pulse {
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
+            background: #4ade80; box-shadow: 0 0 10px #4ade80;
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* View Switching (SPA) */
+        .role-view { display: none; animation: slideUp 0.3s ease-out; }
+        .role-view.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--mes-bg-base); }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <aside class="sidebar">
+        <div class="brand-logo d-flex align-items-center">
+            <i class="bi bi-cpu-fill fs-2 text-primary me-2"></i> 
+            <div style="line-height: 1.1;">
+                <div class="fw-bold fs-5 text-dark">PT. DENSO</div>
+                <div class="small text-secondary fw-semibold">INDONESIA</div>
+            </div>
+        </div>
+        
+        <div class="p-3 pb-0">
+            <div class="p-3 rounded border border-primary bg-primary bg-opacity-10 d-flex align-items-center">
+                <i class="bi bi-hdd-network text-primary fs-4 me-3"></i>
+                <div>
+                    <div class="text-primary fw-bold" style="letter-spacing: 0.5px;">O2 SENSOR 2W</div>
+                    <div class="small text-dark fw-medium">Fajar Manufacturing</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-label mt-2">Pilih Role Akses</div>
+        <div class="flex-grow-1 overflow-auto">
+            <div class="nav-item-role active" data-target="view-operator" data-title="Live Production Monitor" data-role="Operator Produksi"><i class="bi bi-display"></i> Operator (HMI)</div>
+            <div class="nav-item-role" data-target="view-leader" data-title="Action & Control Desk" data-role="Project Manager / Leader"><i class="bi bi-shield-check"></i> Line Leader</div>
+            <div class="nav-item-role" data-target="view-mizu" data-title="Logistic & Kanban System" data-role="Mizusumashi"><i class="bi bi-truck"></i> Logistics (Mizu)</div>
+            <div class="nav-item-role" data-target="view-spv" data-title="Supervisor Command Center" data-role="Supervisor"><i class="bi bi-grid-1x2"></i> Supervisor</div>
+            <div class="nav-item-role" data-target="view-mgr" data-title="Executive Analytics Dashboard" data-role="Plant Manager"><i class="bi bi-graph-up-arrow"></i> Executive Analytics</div>
+            <div class="nav-item-role" data-target="view-ppic" data-title="Master Planning & Schedule" data-role="PPIC Staff"><i class="bi bi-calendar-range"></i> PPIC Planning</div>
+        </div>
+
+        <div class="p-3 border-top">
+            <div class="d-flex align-items-center p-2 rounded hover-bg-light cursor-pointer">
+                <div class="bg-primary rounded-circle d-flex justify-content-center align-items-center text-white fw-bold fs-5 shadow-sm" style="width: 45px; height: 45px;">LS</div>
+                <div class="ms-3">
+                    <h6 class="mb-0 text-dark fw-bold">Lusiana Savara</h6>
+                    <small class="text-secondary d-block fw-medium" id="user-role-display">Operator Produksi</small>
+                    <small class="text-primary fw-bold" style="font-size: 0.7rem;">ID: 312410480</small>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-workspace">
+        <header class="top-navbar">
+            <div>
+                <h4 class="mb-0 fw-bold text-white" id="header-title-display">Live Production Monitor</h4>
+            </div>
+            <div class="d-flex align-items-center gap-4">
+                <div class="badge bg-white bg-opacity-25 border border-light text-white p-2 px-3 fs-6 rounded-pill shadow-sm">
+                    <span class="sensor-pulse"></span> IoT Online
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold fs-4 text-white" id="realtime-clock" style="font-variant-numeric: tabular-nums;">00:00:00</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-scrollable">
+
+            <div id="view-operator" class="role-view active">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="mes-card text-center py-4 border-primary" style="border-bottom-width: 5px;">
+                            <h6 class="text-secondary fw-bold mb-2">TARGET KUMULATIF</h6>
+                            <div style="font-size: 4.5rem; font-weight: 900; line-height: 1; color: var(--mes-primary);">675</div>
+                            <div class="mt-2 text-secondary fw-bold">Pcs (S/d Jam 15:00)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mes-card text-center py-4" style="border-bottom-width: 5px; border-bottom-color: var(--mes-success);">
+                            <h6 class="text-secondary fw-bold mb-2">AKTUAL SENSOR</h6>
+                            <div style="font-size: 4.5rem; font-weight: 900; line-height: 1; color: var(--mes-text-high);">660</div>
+                            <div class="mt-2 text-success fw-bold"><i class="bi bi-check-circle-fill"></i> Tervalidasi IoT</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mes-card text-center py-4 bg-danger bg-opacity-10 border-danger" style="border-bottom-width: 5px;">
+                            <h6 class="text-danger fw-bold mb-2">GAP (SELISIH)</h6>
+                            <div style="font-size: 4.5rem; font-weight: 900; line-height: 1;" class="text-danger">-15</div>
+                            <div class="mt-2 text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> Di Bawah Target</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mes-card p-0 overflow-hidden shadow-sm">
+                    <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center bg-white">
+                        <h5 class="fw-bold m-0 text-dark"><i class="bi bi-table text-primary me-2"></i> Papan Dekidaka Per Jam (Real-time)</h5>
+                        <h5 class="fw-bold text-secondary m-0">Shift 1 (07:00 - 16:00)</h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="mes-table operator-table text-center align-middle m-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-start">Waktu</th>
+                                    <th>Target <small class="text-muted fw-normal">(Jam)</small></th>
+                                    <th>Aktual <small class="text-muted fw-normal">(Jam)</small></th>
+                                    <th class="bg-light-gray">T. Kumulatif</th>
+                                    <th class="bg-light-gray">A. Kumulatif</th>
+                                    <th>Gap</th>
+                                    <th>Status Mesin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start">13:00 - 14:00</td>
+                                    <td class="text-secondary">100</td><td class="text-secondary">100</td>
+                                    <td class="bg-light-gray text-secondary">575</td><td class="bg-light-gray text-secondary">575</td>
+                                    <td class="text-success">0</td><td><span class="badge bg-success bg-opacity-10 text-success border border-success p-2">Normal</span></td>
+                                </tr>
+                                <tr class="row-alert">
+                                    <td class="text-start fw-bold text-dark"><i class="bi bi-caret-right-fill text-danger me-2"></i>14:00 - 15:00</td>
+                                    <td class="text-dark">100</td>
+                                    <td class="text-danger fw-bold">85</td>
+                                    <td class="bg-white text-dark fw-bold">675</td>
+                                    <td class="bg-white text-dark fw-bold">660</td>
+                                    <td class="text-danger fw-bold fs-3">-15</td>
+                                    <td><span class="badge bg-danger p-2 fs-6 shadow-sm">Abnormal</span></td>
+                                </tr>
+                                <tr style="opacity: 0.5;">
+                                    <td class="text-start">15:00 - 16:00</td>
+                                    <td>100</td><td>-</td><td class="bg-light-gray">775</td><td class="bg-light-gray">-</td><td>-</td><td>-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-leader" class="role-view">
+                <div class="row g-4 h-100">
+                    <div class="col-xl-8">
+                        <div class="mes-card d-flex flex-column p-0 overflow-hidden">
+                            <div class="p-4 border-bottom d-flex justify-content-between align-items-center bg-white">
+                                <h5 class="fw-bold m-0 text-dark">Validasi Log Produksi</h5>
+                                <div class="badge bg-primary fs-6 shadow-sm">Shift 1 (Aktif)</div>
+                            </div>
+                            <div class="table-responsive flex-grow-1 p-3">
+                                <table class="mes-table text-center align-middle border rounded">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-start">Waktu</th>
+                                            <th>Target</th><th>Aktual</th><th>Gap</th><th>Validasi Log</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-start fw-bold">13:00 - 14:00</td>
+                                            <td>100</td><td>100</td><td class="text-success fw-bold">0</td>
+                                            <td class="text-start"><i class="bi bi-check-circle-fill text-success me-2"></i> Normal, tidak ada log</td>
+                                        </tr>
+                                        <tr class="row-alert">
+                                            <td class="text-start fw-bold text-danger">14:00 - 15:00</td>
+                                            <td>100</td><td>85</td><td class="text-danger fw-bold fs-5">-15</td>
+                                            <td class="text-start">
+                                                <i class="bi bi-exclamation-circle-fill text-danger me-2"></i>
+                                                <span class="text-danger fw-bold">Input wajib di panel kanan</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4">
+                        <div class="mes-card border-danger" style="border-width: 2px;">
+                            <h5 class="fw-bold text-danger mb-4"><i class="bi bi-shield-exclamation"></i> Form Investigasi (14:00)</h5>
+                            <div class="alert var(--mes-danger-light) border border-danger text-danger mb-4 p-3 shadow-sm" style="background-color: var(--mes-danger-light);">
+                                Terdeteksi <strong>Gap -15 pcs</strong>. Input <i>Loss Time Code</i> agar tersinkronisasi ke sistem Manajemen SPV.
+                            </div>
+                            
+                            <form>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small text-uppercase fw-bold">Kode Root Cause</label>
+                                    <select class="form-select border-secondary p-3 fw-medium">
+                                        <option value="" disabled selected>-- Pilih Jenis Masalah --</option>
+                                        <option value="M">Machine Trouble (M)</option>
+                                        <option value="Q">Quality Issue / Part NG (Q)</option>
+                                        <option value="W">Waiting Material (W)</option>
+                                        <option value="S">Setup / Changeover (S)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label text-secondary small text-uppercase fw-bold">Keterangan Detail (Wajib)</label>
+                                    <textarea class="form-control border-secondary p-3" rows="3" placeholder="Contoh: Sensor O2 body defect, line stop 10 mnt..."></textarea>
+                                </div>
+                                <button type="button" class="btn btn-primary w-100 py-3 fw-bold fs-6 mb-3 shadow-sm">Simpan Log & Validasi</button>
+                                <button type="button" class="btn btn-outline-danger w-100 py-3 fw-bold fs-6">
+                                    <i class="bi bi-telephone-outbound-fill me-2"></i> PANGGIL ANDON BANTUAN
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-mizu" class="role-view">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-truck text-primary me-2"></i> Kanban Material Supply</h5>
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="kanban-col shadow-sm">
+                            <h6 class="fw-bold text-danger mb-4 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-circle-fill me-2 small"></i> Request Material</span>
+                                <span class="badge bg-danger rounded-pill">2</span>
+                            </h6>
+                            <div class="kanban-card urgent">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Urgent</span>
+                                    <small class="text-secondary fw-bold">14:20</small>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Pos Assembly 2W-A</h6>
+                                <p class="text-secondary small mb-3">Part: O2 Sensor Housing (M920)<br>Status: Sisa < 10 Pcs</p>
+                                <button class="btn btn-primary w-100 btn-sm fw-bold">Terima & Antar</button>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Warning</span>
+                                    <small class="text-secondary fw-bold">14:35</small>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Pos Wire Cutting</h6>
+                                <p class="text-secondary small mb-3">Part: Kabel Tembaga 0.5mm<br>Status: Sisa 1 Roll</p>
+                                <button class="btn btn-outline-primary w-100 btn-sm fw-bold">Terima & Antar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="kanban-col shadow-sm">
+                            <h6 class="fw-bold text-warning mb-4 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-circle-fill me-2 small"></i> Sedang Diantar</span>
+                                <span class="badge bg-warning text-dark rounded-pill">1</span>
+                            </h6>
+                            <div class="kanban-card transit bg-warning bg-opacity-10 border-warning">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-white text-dark border">In Transit</span>
+                                    <small class="text-secondary fw-bold">Picked: 14:10</small>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">Pos Final Inspection</h6>
+                                <p class="text-secondary small mb-3">Part: Label Barcode Packing</p>
+                                <button class="btn btn-success w-100 btn-sm fw-bold"><i class="bi bi-check2-circle"></i> Selesai Drop-off</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="kanban-col shadow-sm">
+                            <h6 class="fw-bold text-success mb-4 d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-circle-fill me-2 small"></i> Selesai (Shift 1)</span>
+                                <span class="badge bg-success rounded-pill">12</span>
+                            </h6>
+                            <div class="kanban-card border-success" style="border-left-width: 4px; background-color: var(--mes-bg-base);">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i> Pos Assembly 2W-C</h6>
+                                <p class="text-secondary small m-0">Konektor Pin dikirim pada 13:45</p>
+                            </div>
+                            <div class="kanban-card border-success" style="border-left-width: 4px; background-color: var(--mes-bg-base);">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i> Pos Sub-Assy</h6>
+                                <p class="text-secondary small m-0">O-Ring Seal dikirim pada 12:15</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-spv" class="role-view">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-grid-1x2 text-primary me-2"></i> Multi-Line Command Center</h5>
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="mes-card border-success border-2 shadow-sm" style="background: #f0fdf4;">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark m-0">Line 1: O2 SENSOR 2W</h6>
+                                    <small class="text-success fw-bold"><i class="bi bi-play-circle-fill"></i> RUNNING NORMAL</small>
+                                </div>
+                                <span class="badge bg-success fs-6">98.6% OEE</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-secondary small fw-medium mt-3 border-top pt-2">
+                                <span>Target: 750</span><span>Actual: 660</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mes-card border-danger border-2 shadow-sm" style="background: #fef2f2;">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark m-0">Line 2: O2 SENSOR 4W</h6>
+                                    <small class="text-danger fw-bold"><i class="bi bi-stop-circle-fill"></i> LINE STOP (ANDON)</small>
+                                </div>
+                                <span class="badge bg-danger fs-6">72.4% OEE</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-secondary small fw-medium mt-3 border-top border-danger pt-2">
+                                <span>Target: 500</span><span>Actual: 310</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mes-card border-warning border-2 shadow-sm" style="background: #fffbeb;">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark m-0">Line 3: O2 EXPORT</h6>
+                                    <small class="text-warning fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> MATERIAL DELAY</small>
+                                </div>
+                                <span class="badge bg-warning text-dark fs-6">89.0% OEE</span>
+                            </div>
+                            <div class="d-flex justify-content-between text-secondary small fw-medium mt-3 border-top border-warning pt-2">
+                                <span>Target: 1000</span><span>Actual: 890</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mes-card shadow-sm">
+                    <h6 class="fw-bold text-dark mb-4">Pending Approvals (Loss Time Validation)</h6>
+                    <div class="table-responsive">
+                        <table class="mes-table text-start">
+                            <thead>
+                                <tr><th>Line</th><th>Shift</th><th>Waktu</th><th>Loss Time Code / Keterangan</th><th>Status</th><th>Aksi</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold text-dark">O2 SENSOR 4W</td><td>Shift 1</td><td>10:15 - 11:00</td>
+                                    <td><span class="text-danger fw-bold">(M) Machine Error</span><br><small class="text-secondary">Sensor proximity rusak</small></td>
+                                    <td><span class="badge bg-warning text-dark">Waiting SPV Sign</span></td>
+                                    <td><button class="btn btn-sm btn-primary fw-bold px-3">Approve</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-mgr" class="role-view">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-graph-up-arrow text-primary me-2"></i> Executive Analytics</h5>
+                <div class="row g-4 mb-4">
+                    <div class="col-xl-3 col-md-6"><div class="mes-card border-top border-4 border-primary shadow-sm"><div class="text-secondary fw-bold mb-2">Overall Equipment Effectiveness</div><div class="kpi-value text-primary">88.5<span class="fs-4 text-secondary">%</span></div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="mes-card border-top border-4 border-success shadow-sm"><div class="text-secondary fw-bold mb-2">Total Output O2 Sensor</div><div class="kpi-value text-dark">12,450</div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="mes-card border-top border-4 border-danger shadow-sm"><div class="text-secondary fw-bold mb-2">Plant Defect Rate (NG)</div><div class="kpi-value text-danger">1.2<span class="fs-4 text-secondary">%</span></div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="mes-card border-top border-4 border-warning shadow-sm"><div class="text-secondary fw-bold mb-2">Total Downtime (Plant)</div><div class="kpi-value text-warning">142<span class="fs-4 text-secondary"> mnt</span></div></div></div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-xl-8">
+                        <div class="mes-card shadow-sm"><h6 class="fw-bold mb-4 text-dark">7-Day OEE Trend</h6><div style="height: 300px;"><canvas id="trendChart"></canvas></div></div>
+                    </div>
+                    <div class="col-xl-4">
+                        <div class="mes-card shadow-sm"><h6 class="fw-bold mb-4 text-dark">Loss Time Breakdown</h6><div style="height: 300px;"><canvas id="lossChart"></canvas></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-ppic" class="role-view">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-calendar-range text-primary me-2"></i> Master Schedule & Sequence</h5>
+                <div class="row g-4">
+                    <div class="col-xl-4">
+                        <div class="mes-card shadow-sm">
+                            <h6 class="fw-bold text-dark mb-4">Input Rencana Produksi</h6>
+                            <form>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-bold">PILIH LINE</label>
+                                    <select class="form-select border-secondary fw-medium">
+                                        <option>O2 SENSOR 2W</option><option>O2 SENSOR 4W</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary small fw-bold">TARGET QUANTITY (PCS)</label>
+                                    <input type="number" class="form-control border-secondary fw-medium" value="750">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label text-secondary small fw-bold">TANGGAL PRODUKSI</label>
+                                    <input type="date" class="form-control border-secondary fw-medium">
+                                </div>
+                                <button type="button" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">Generate Sequence & Kirim ke IoT</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-xl-8">
+                        <div class="mes-card shadow-sm">
+                            <h6 class="fw-bold text-dark mb-4">Jadwal Routing / Anti-Jumping Sequence Aktif</h6>
+                            <div class="table-responsive">
+                                <table class="mes-table text-start">
+                                    <thead>
+                                        <tr><th>Tgl / Shift</th><th>Work Order</th><th>Line</th><th>Target</th><th>Status Sequence</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>01 Jun / Shift 1</td><td class="fw-bold text-primary">WO-2026-601A</td>
+                                            <td>O2 SENSOR 2W</td><td>750 Pcs</td>
+                                            <td><span class="badge bg-success bg-opacity-10 text-success border border-success">Running</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>01 Jun / Shift 2</td><td class="fw-bold text-primary">WO-2026-601B</td>
+                                            <td>O2 SENSOR 2W</td><td>750 Pcs</td>
+                                            <td><span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary">Scheduled</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>01 Jun / Shift 1</td><td class="fw-bold text-primary">WO-2026-602A</td>
+                                            <td>O2 SENSOR 4W</td><td>500 Pcs</td>
+                                            <td><span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Halted (Andon)</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // 1. SPA View Switcher Logic
+        const navItems = document.querySelectorAll('.nav-item-role');
+        const views = document.querySelectorAll('.role-view');
+        const headerTitle = document.getElementById('header-title-display');
+        const userRoleText = document.getElementById('user-role-display');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                navItems.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+
+                const targetId = this.getAttribute('data-target');
+                const titleText = this.getAttribute('data-title');
+                const roleText = this.getAttribute('data-role');
+
+                views.forEach(view => { view.classList.remove('active'); });
+
+                document.getElementById(targetId).classList.add('active');
+                headerTitle.innerText = titleText;
+                userRoleText.innerText = roleText;
+            });
+        });
+
+        // 2. Real-time Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('realtime-clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }) + ' WIB';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 3. Inisialisasi Chart.js (Untuk Manager View)
+        Chart.defaults.color = '#64748b'; 
+        Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+        new Chart(document.getElementById('trendChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
+                datasets: [{
+                    label: 'OEE (%)', data: [82, 85, 81, 89, 84, 88.5],
+                    borderColor: '#1d4ed8', backgroundColor: 'rgba(29, 78, 216, 0.1)',
+                    borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#fff', pointRadius: 5
+                }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { 
+                    y: { min: 70, grid: { color: '#e2e8f0' } }, 
+                    x: { grid: { display: false } } 
+                }, 
+                plugins: { legend: { display: false } } 
+            }
+        });
+
+        new Chart(document.getElementById('lossChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Machine Error', 'Part NG', 'Setup'],
+                datasets: [{ data: [45, 30, 25], backgroundColor: ['#dc2626', '#ea580c', '#2563eb'], borderWidth: 0 }]
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, cutout: '75%', 
+                plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } } 
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
